@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surveillance Sonore en Temps Réel</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        #graphiqueSonore {
+            width: 100%;
+        }
+
+        .presentation {
+            background-color: #f4f4f4;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Surveillance Sonore en Temps Réel</h1>
+
+        <div class="presentation">
+            <h2>Présentation du Projet</h2>
+            <p>Ce projet vise à surveiller le niveau sonore ambiant en temps réel. Un capteur sonore est utilisé pour
+                capturer les données sonores, qui sont ensuite envoyées à une page web via une connexion Internet. Les
+                données sont affichées sous forme de graphique pour une visualisation facile et une analyse rapide.</p>
+        </div>
+
+        <canvas id="graphiqueSonore"></canvas>
+    </div>
+
+    <script>
+        var graphique;
+
+        // Configuration initiale du graphique
+        function configurerGraphique() {
+            var ctx = document.getElementById('graphiqueSonore').getContext('2d');
+            graphique = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Niveau Sonore (dB)',
+                        data: [],
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        xAxes: [{
+                            type: 'time',
+                            time: {
+                                displayFormats: {
+                                    second: 'h:mm:ss a'
+                                }
+                            },
+                            distribution: 'linear',
+                            ticks: {
+                                source: 'auto'
+                            }
+                        }],
+                        yAxes: [{
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Niveau Sonore (dB)'
+                            },
+                            ticks: {
+                                beginAtZero: true
+                            }
+                        }]
+                    }
+                }
+            });
+        }
+
+        // Mettre à jour le graphique avec de nouvelles données
+        function mettreAJourGraphique(timestamp, valeur) {
+            graphique.data.labels.push(timestamp);
+            graphique.data.datasets[0].data.push({ x: timestamp, y: valeur });
+            graphique.update();
+        }
+
+        // Récupérer les données du serveur
+        function recupererDonnees() {
+            const esp32Address = 'http://172.20.10.14'; // Utilisez l'adresse IP de votre ESP32
+            fetch(esp32Address + '/data.json')
+                .then(response => response.json())
+                .then(data => {
+                    mettreAJourGraphique(new Date(), data['niveauSonore']);
+                })
+                .catch(error => console.error('Erreur :', error));
+        }
+
+        // Actualiser les données toutes les 5 secondes
+        setInterval(recupererDonnees, 5000);
+
+        // Configuration initiale lors du chargement de la page
+        window.onload = function () {
+            configurerGraphique();
+        };
+    </script>
+</body>
+
+</html>

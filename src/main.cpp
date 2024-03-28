@@ -4,8 +4,8 @@
 #include "../lib/CapteurSonore.h"
 #include "../lib/ServeurHTTP.h"
 
-const char* ssid = "Ornella KOM";
-const char* password = "Ornella2023";
+const char* ssid = "Ariane";
+const char* password = "canada2023";
 const int pinCapteurSonore = 32;
 
 CapteurSonore capteur(pinCapteurSonore);
@@ -21,9 +21,10 @@ void setup()
   while (WiFi.status() != WL_CONNECTED)
   {
     delay(1000);
-    Serial.println("Connecting to WiFi...");
+    Serial.println("Connecting to WiFi.....");
   }
   Serial.println("Connected to WiFi");
+  Serial.println(WiFi.localIP());
 
   server.on("/data.json", HTTP_GET, [](AsyncWebServerRequest *request)
             { serveur.handleRequest(request, capteur); });
