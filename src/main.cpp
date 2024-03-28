@@ -1,18 +1,37 @@
 #include <Arduino.h>
+#include <WiFi.h>
+#include <ESPAsyncWebServer.h>
+#include "../lib/CapteurSonore.h"
+#include "../lib/ServeurHTTP.h"
 
-// put function declarations here:
-int myFunction(int, int);
+const char* ssid = "Ornella KOM";
+const char* password = "Ornella2023";
+const int pinCapteurSonore = 32;
 
-void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+CapteurSonore capteur(pinCapteurSonore);
+ServeurHTTP serveur;
+
+AsyncWebServer server(80);
+
+void setup()
+{
+  Serial.begin(9600);
+
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+  Serial.println("Connected to WiFi");
+
+  server.on("/data.json", HTTP_GET, [](AsyncWebServerRequest *request)
+            { serveur.handleRequest(request, capteur); });
+
+  server.begin();
 }
 
-void loop() {
+void loop()
+{
   // put your main code here, to run repeatedly:
-}
-
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
 }
