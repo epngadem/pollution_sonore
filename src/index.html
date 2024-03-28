@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Surveillance Sonore en Temps Réel</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -21,6 +22,7 @@
 
         #graphiqueSonore {
             width: 100%;
+            max-height: 400px;
         }
 
         .presentation {
@@ -30,8 +32,13 @@
             margin-bottom: 20px;
         }
 
-        h1 {
+        h1,
+        h2 {
             text-align: center;
+        }
+
+        .alert {
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -48,6 +55,8 @@
         </div>
 
         <canvas id="graphiqueSonore"></canvas>
+
+        <div id="donneesCapteur" class="alert"></div> <!-- Div pour afficher les données renvoyées par Arduino -->
     </div>
 
     <script>
@@ -76,7 +85,7 @@
                             type: 'time',
                             time: {
                                 displayFormats: {
-                                    second: 'h:mm:ss a'
+                                    second: 'DD/MM/YY HH:mm:ss' // Format de date modifié
                                 }
                             },
                             distribution: 'linear',
@@ -103,6 +112,13 @@
             graphique.data.labels.push(timestamp);
             graphique.data.datasets[0].data.push({ x: timestamp, y: valeur });
             graphique.update();
+
+            // Vérifier si le niveau sonore dépasse 100 et afficher une alerte
+            if (valeur > 100) {
+                document.getElementById('donneesCapteur').innerHTML = '<div class="alert alert-danger" role="alert">Niveau sonore actuel : ' + valeur + ' dB</div>';
+            } else {
+                document.getElementById('donneesCapteur').innerHTML = '<div class="alert alert-success" role="alert">Niveau sonore actuel : ' + valeur + ' dB</div>';
+            }
         }
 
         // Récupérer les données du serveur
@@ -111,6 +127,7 @@
             fetch(esp32Address + '/data.json')
                 .then(response => response.json())
                 .then(data => {
+                    // Mettre à jour le graphique avec les nouvelles données
                     mettreAJourGraphique(new Date(), data['niveauSonore']);
                 })
                 .catch(error => console.error('Erreur :', error));
