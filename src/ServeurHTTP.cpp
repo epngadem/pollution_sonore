@@ -1,5 +1,6 @@
 #include "../lib/ServeurHTTP.h"
 
+ServeurHTTP::ServeurHTTP() {}
 
 void ServeurHTTP::handleRequest(AsyncWebServerRequest *request, CapteurSonore &capteur)
 {

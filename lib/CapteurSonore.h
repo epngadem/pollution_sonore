@@ -9,6 +9,7 @@ private:
     int pin;
 
 public:
+    CapteurSonore(); // Constructeur par défaut
     CapteurSonore(int pin);
     int lireValeur();
 };
