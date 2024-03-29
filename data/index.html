@@ -146,7 +146,7 @@
 
         // Récupérer les données du serveur
         function recupererDonneesSynchrone() {
-            const esp32Address = 'http://172.20.10.14'; // Utilisez l'adresse IP de votre ESP32
+            const esp32Address = 'http://10.0.0.253'; // Utilisez l'adresse IP de votre ESP32
             var xhr = new XMLHttpRequest();
             xhr.open('GET', esp32Address + '/data.json', false);  // false pour la requête synchrone
             xhr.send();
