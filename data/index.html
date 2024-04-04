@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Surveillance Sonore en Temps Réel</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -21,7 +23,7 @@
 
         #graphiqueSonore {
             width: 100%;
-            max-height: 400px;
+            height: 100px !important;
         }
 
         .presentation {
@@ -34,6 +36,7 @@
         h1,
         h2 {
             text-align: center;
+            background-color: green;
         }
 
         .alert {
@@ -49,80 +52,62 @@
         }
 
         .led-verte {
-            background-color: green;
+            color: green;
         }
 
         .led-rouge {
-            background-color: red;
+            color: red;
         }
 
         .led-allumee {
-            box-shadow: 0 0 10px 5px yellow; /* Effet de lueur pour indiquer que la LED est allumée */
+            text-shadow: 0 0 10px yellow; /* Effet de lueur pour indiquer que la LED est allumée */
+        }
+
+        /* Ajout de la classe pour ajuster la taille des icônes */
+        .icone-led {
+            font-size: 3rem; /* Taille de l'icône (modifiable selon vos besoins) */
         }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <h1>Surveillance Sonore en Temps Réel</h1>
+        <h1><i class="fas fa-microphone"></i> Surveillance sonore Synchrone: <span id="ledscore">%SCORE%</span></h1>
         <div class="presentation">
             <h2>Présentation du Projet</h2>
-            <p>Ce projet vise à surveiller le niveau sonore ambiant en temps réel. Un capteur sonore est utilisé pour capturer les données sonores, qui sont ensuite envoyées à une page web via une connexion Internet. Les données sont affichées sous forme de graphique pour une visualisation facile et une analyse rapide.</p>
+            <p>Ce projet vise à surveiller le niveau sonore ambiant en synchrone. Un capteur sonore est utilisé pour
+                capturer les données sonores, qui sont ensuite envoyées à une page web via une connexion Internet. Les
+                données sont affichées sous forme de graphique pour une visualisation facile et une analyse rapide.</p>
         </div>
         <canvas id="graphiqueSonore"></canvas>
         <div id="donneesCapteur" class="alert"></div> <!-- Div pour afficher les données renvoyées par Arduino -->
-        <div class="led led-verte" id="ledVerte"></div>
-        <div class="led led-rouge" id="ledRouge"></div>
+        <div class="led">
+            <i class="fas fa-lightbulb led-verte led-allumee icone-led" id="ledVerte"></i> <!-- Icone d'ampoule verte -->
+            <i class="fas fa-lightbulb led-rouge icone-led" id="ledRouge"></i> <!-- Icone d'ampoule rouge -->
+        </div>
     </div>
 
     <script>
         var graphique;
 
-        // Configuration initiale du graphique
         function configurerGraphique() {
+            const data = {
+                labels: [],
+                datasets: [{
+                    label: 'Niveau Sonore',
+                    data: [],
+                    fill: false,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            };
             var ctx = document.getElementById('graphiqueSonore').getContext('2d');
             graphique = new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Niveau Sonore (dB)',
-                        data: [],
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        xAxes: [{
-                            type: 'time',
-                            time: {
-                                displayFormats: {
-                                    second: 'DD/MM/YY HH:mm:ss' // Format de date modifié
-                                }
-                            },
-                            distribution: 'linear',
-                            ticks: {
-                                source: 'auto'
-                            }
-                        }],
-                        yAxes: [{
-                            scaleLabel: {
-                                display: true,
-                                labelString: 'Niveau Sonore (dB)'
-                            },
-                            ticks: {
-                                beginAtZero: true
-                            }
-                        }]
-                    }
-                }
+                data: data,
             });
         }
 
-        // Mettre à jour le graphique avec de nouvelles données
         function mettreAJourGraphique(timestamp, valeur) {
             graphique.data.labels.push(timestamp);
             graphique.data.datasets[0].data.push({ x: timestamp, y: valeur });
@@ -143,27 +128,13 @@
                 ledVerte.classList.add('led-allumee');
             }
         }
-
-        // Récupérer les données du serveur
-        function recupererDonneesSynchrone() {
-            const esp32Address = 'http://10.0.0.253'; // Utilisez l'adresse IP de votre ESP32
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', esp32Address + '/data.json', false);  // false pour la requête synchrone
-            xhr.send();
-
-            if (xhr.status === 200) {
-                var data = JSON.parse(xhr.responseText);
-                mettreAJourGraphique(new Date(), data['niveauSonore']);
-            } else {
-                console.error('Erreur :', xhr.status);
-            }
-        }
-
         // Appeler la fonction pour récupérer les données au chargement de la page
         window.onload = function () {
             configurerGraphique();
-            recupererDonneesSynchrone(); // Récupérer les données au chargement de la page
+            mettreAJourGraphique(new Date(), [%NIVEAU_SONORE%]);
         };
     </script>
 </body>
+
 </html>
+

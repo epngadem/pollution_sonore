@@ -1,248 +1,127 @@
+/*
+  Titre      : systeme de Surveillance sonore de maniere Synchrone (Communication)
+  Auteur     : Princesse Ornella NGADEM KOM
+  Date       : 05/04/2024
+  Description: Ce code nous permet de faire des collectes de donnees du niveau sonore au CCNB dans ses differents locaux tout en alertant les les professeurs
+  en cas d extreme bruits grace a nos actionneurs quon a defini et cela pour retablir lordre dans ses locaux.
+*/
+
+
+
 #include <Arduino.h>
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include "../lib/CapteurSonore.h"
 #include "../lib/ServeurHTTP.h"
+#include "SPIFFS.h"
 
-const char* ssid = "Ornella KOM";
-const char* password = "Ornella2023";
+const char *ssid = "Ariane";
+const char *password = "canada2023";
 
-const int pinCapteurSonore = 32;
-const int seuilSonore = 500; // Seuil de déclenchement du niveau sonore
+const int pinCapteurSonore = 32; // Broche du capteur sonore
+const int seuilSonore = 500;     // Seuil de déclenchement du niveau sonore
 
-const int pinLedVerte = 27;
-const int pinLedRouge = 26;
-const int pinHautParleur = 33;
+const int pinLedVerte = 27;    // Broche de la LED verte
+const int pinLedRouge = 26;    // Broche de la LED rouge
+const int pinHautParleur = 33; // Broche du haut-parleur
 
-CapteurSonore capteur(pinCapteurSonore);
-ServeurHTTP serveur;
+CapteurSonore capteur(pinCapteurSonore); // on a créer un objet CapteurSonore avec le numéro de broche
+ServeurHTTP serveur;//on a  créer un objet ServeurHTTP
 
-AsyncWebServer server(80);
+String niveauSonoreString;// Variable pour stocker le niveau sonore sous forme de chaîne
+int niveauSonore;// Variable pour stocker le niveau sonore sous forme d'entier
 
-const char* indexHtml = R"rawliteral(
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Surveillance Sonore en Temps Réel</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
+AsyncWebServer server(80);// on a  créer un serveur web asynchrone sur le port 80
 
-        .container {
-            max-width: 800px;
-            margin: auto;
-            padding: 20px;
-        }
 
-        #graphiqueSonore {
-            width: 100%;
-            max-height: 400px;
-        }
+// Fonction de traitement des variables de remplacement pour la page web
+String processor(const String &var)
+{
+    if (var == "SCORE")// jai creer un premiere variable %SCORE% qui se trouve sur ma page 
+    {
+        return niveauSonoreString;
+    }
+    if (var == "NIVEAU_SONORE")// jai creer ici une seconde variable %NIVEAU SONORE% qui me permettra de capturer ma donneee sonore sur le serveur
+    {
+        Serial.println(' var : ' + String(niveauSonore));
+        return String(niveauSonore);
+    }
+    return String();
+}
+// Initialisation du système de fichiers SPIFFS
+void initSPIFFS()
+{
+    if (!SPIFFS.begin(true))
+    {
+        Serial.println("Une erreur s'est produite lors du montage de SPIFFS");
+    }
+    else
+    {
+        Serial.println("SPIFFS monté avec succès");
+    }
+}
+// Configuration initiale du programme
+void setup()
+{
+    Serial.begin(9600);// Initialisation de la communication série à 9600 bauds
 
-        .presentation {
-            background-color: #f4f4f4;
-            padding: 20px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
+    pinMode(pinCapteurSonore, INPUT);// Configuration de la broche du capteur sonore en entrée
+    pinMode(pinLedVerte, OUTPUT);// Configuration de la broche de la LED verte en sortie
+    pinMode(pinLedRouge, OUTPUT);// Configuration de la broche de la LED rouge en sortie
+    pinMode(pinHautParleur, OUTPUT);// Configuration de la broche du haut-parleur en sortie
 
-        h1,
-        h2 {
-            text-align: center;
-        }
+    WiFi.begin(ssid, password);// on démarre la connexion WiFi avec les identifiants fournis
 
-        .alert {
-            margin-top: 20px;
-        }
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(1000);
+        Serial.println("Connecting to WiFi...");
+    }
+    initSPIFFS(); // Initialisation du système de fichiers SPIFFS
+    Serial.println(WiFi.localIP()); // on Affiche l'adresse IP locale obtenue par WiFi
 
-        .led {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            margin: 10px;
-            display: inline-block;
-        }
+    // Route pour servir le contenu de index.html lors de l'accès à "/"
 
-        .led-verte {
-            background-color: green;
-        }
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(SPIFFS, "/index.html", "text/html", false, processor); });
 
-        .led-rouge {
-            background-color: red;
-        }
+    server.serveStatic("/", SPIFFS, "/"); // Sert les fichiers statiques depuis SPIFFS
 
-        .led-allumee {
-            box-shadow: 0 0 10px 5px yellow; /* Effet de lueur pour indiquer que la LED est allumée */
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Surveillance Sonore en Temps Réel</h1>
-        <div class="presentation">
-            <h2>Présentation du Projet</h2>
-            <p>Ce projet vise à surveiller le niveau sonore ambiant en temps réel. Un capteur sonore est utilisé pour capturer les données sonores, qui sont ensuite envoyées à une page web via une connexion Internet. Les données sont affichées sous forme de graphique pour une visualisation facile et une analyse rapide.</p>
-        </div>
-        <canvas id="graphiqueSonore"></canvas>
-        <div id="donneesCapteur" class="alert"></div> <!-- Div pour afficher les données renvoyées par Arduino -->
-        <div class="led led-verte" id="ledVerte"></div>
-        <div class="led led-rouge" id="ledRouge"></div>
-    </div>
 
-    <script>
-        var graphique;
-
-        // Configuration initiale du graphique
-        function configurerGraphique() {
-            var ctx = document.getElementById('graphiqueSonore').getContext('2d');
-            graphique = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Niveau Sonore (dB)',
-                        data: [],
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        xAxes: [{
-                            type: 'time',
-                            time: {
-                                displayFormats: {
-                                    second: 'DD/MM/YY HH:mm:ss' // Format de date modifié
-                                }
-                            },
-                            distribution: 'linear',
-                            ticks: {
-                                source: 'auto'
-                            }
-                        }],
-                        yAxes: [{
-                            scaleLabel: {
-                                display: true,
-                                labelString: 'Niveau Sonore (dB)'
-                            },
-                            ticks: {
-                                beginAtZero: true
-                            }
-                        }]
-                    }
-                }
-            });
-        }
-
-        // Mettre à jour le graphique avec de nouvelles données
-        function mettreAJourGraphique(timestamp, valeur) {
-            graphique.data.labels.push(timestamp);
-            graphique.data.datasets[0].data.push({ x: timestamp, y: valeur });
-            graphique.update();
-
-            // Afficher les données du capteur
-            document.getElementById('donneesCapteur').innerHTML = '<div class="alert alert-success" role="alert">Niveau sonore actuel : ' + valeur + ' dB</div>';
-
-            // Mettre à jour l'état des LEDs en fonction du niveau sonore
-            var ledVerte = document.getElementById('ledVerte');
-            var ledRouge = document.getElementById('ledRouge');
-
-            if (valeur > 500) {
-                ledVerte.classList.remove('led-allumee');
-                ledRouge.classList.add('led-allumee');
-            } else {
-                ledRouge.classList.remove('led-allumee');
-                ledVerte.classList.add('led-allumee');
-            }
-        }
-
-        // Récupérer les données du serveur
-        function recupererDonneesSynchrone() {
-            const esp32Address = 'http://172.20.10.14'; // Utilisez l'adresse IP de votre ESP32
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', esp32Address + '/data.json', false);  // false pour la requête synchrone
-            xhr.send();
-
-            if (xhr.status === 200) {
-                var data = JSON.parse(xhr.responseText);
-                mettreAJourGraphique(new Date(), data['niveauSonore']);
-            } else {
-                console.error('Erreur :', xhr.status);
-            }
-        }
-
-        // Appeler la fonction pour récupérer les données au chargement de la page
-        window.onload = function () {
-            configurerGraphique();
-            recupererDonneesSynchrone(); // Récupérer les données au chargement de la page
-        };
-    </script>
-</body>
-</html>
-)rawliteral";
-
-void setup() {
-  Serial.begin(9600);
-  
-  pinMode(pinCapteurSonore, INPUT);
-  pinMode(pinLedVerte, OUTPUT);
-  pinMode(pinLedRouge, OUTPUT);
-  pinMode(pinHautParleur, OUTPUT);
-
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.println("Connecting to WiFi...");
-  }
-
-  Serial.println(WiFi.localIP());
-  
-  // Route pour servir le contenu de index.html lors de l'accès à "/"
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/html", indexHtml);
-  });
-
-  // Route pour renvoyer les données du capteur sous forme de JSON
-  server.on("/data.json", HTTP_GET, [](AsyncWebServerRequest *request) {
-    int noiseLevel = analogRead(pinCapteurSonore);
+    // Route pour renvoyer les données du capteur sous forme de JSON
+    server.on("/data.json", HTTP_GET, [](AsyncWebServerRequest *request)
+              {
+    int noiseLevel = capteur.lireValeur();// Lit la valeur du capteur sonore
     String jsonResponse = "{";
     jsonResponse += "\"niveauSonore\":" + String(noiseLevel);
     jsonResponse += "}";
 
     // Réponse HTTP envoyée au client
     AsyncWebServerResponse *response = request->beginResponse(200, "application/json", jsonResponse);
-    response->addHeader("Access-Control-Allow-Origin", "*"); // Ajout d'en-tête CORS
+    response->addHeader("Access-Control-Allow-Origin", "*"); 
     response->addHeader("Access-Control-Allow-Methods", "GET");
-    request->send(response);
-  });
+    request->send(response); });
 
-  server.begin();
+    server.begin();// Démarre le serveur web
 }
+// Boucle principale du programme
+void loop()
+{
+    niveauSonore = capteur.lireValeur();; // Lit la valeur du capteur sonore
 
-void loop() {
-  int niveauSonore = analogRead(pinCapteurSonore);
-
-  if (niveauSonore > seuilSonore) {
-    digitalWrite(pinLedRouge, HIGH);
-    digitalWrite(pinLedVerte, LOW);
-    tone(pinHautParleur, 1000); // Jouer un son
-  } else {
-    digitalWrite(pinLedRouge, LOW);
-    digitalWrite(pinLedVerte, HIGH);
-    noTone(pinHautParleur); // Arrêter le son
-  }
-
-  // Mise à jour des données toutes les 5 secondes
-  delay(5000);
+    if (niveauSonore > seuilSonore)// Vérifie si le niveau sonore dépasse le seuil
+    {
+        digitalWrite(pinLedRouge, HIGH);// Allume la LED rouge
+        digitalWrite(pinLedVerte, LOW);// Éteint la LED verte
+        tone(pinHautParleur, 1000); // Jouer un son
+    }
+    else// Si le niveau sonore est inférieur ou égal au seuil
+    {
+        digitalWrite(pinLedRouge, LOW);// Éteint la LED rouge
+        digitalWrite(pinLedVerte, HIGH);// Allume la LED verte
+        noTone(pinHautParleur); // Arrêter le son
+    }
+    niveauSonoreString = String(niveauSonore);// Convertit le niveau sonore en chaîne de caractères
+    // Mise à jour des données toutes les 5 secondes
+    delay(5000);
 }
