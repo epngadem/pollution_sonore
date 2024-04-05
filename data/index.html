@@ -60,35 +60,26 @@
         }
 
         .led-allumee {
-<<<<<<< HEAD
             text-shadow: 0 0 10px yellow; /* Effet de lueur pour indiquer que la LED est allumée */
         }
 
         /* Ajout de la classe pour ajuster la taille des icônes */
         .icone-led {
             font-size: 3rem; /* Taille de l'icône (modifiable selon vos besoins) */
-=======
-            box-shadow: 0 0 10px 5px yellow;
-            /* Effet de lueur pour indiquer que la LED est allumée */
->>>>>>> 6dd6671c74b2ffc2a077a2a9b61952a1af9e194d
         }
     </style>
 </head>
 
 <body>
     <div class="container">
-<<<<<<< HEAD
         <h1><i class="fas fa-microphone"></i> Surveillance sonore Synchrone: <span id="ledscore">%SCORE%</span></h1>
-=======
-        <h1>Surveillance sonore Synchrone: <span id="ledscore">%SCORE%</span></h1>
->>>>>>> 6dd6671c74b2ffc2a077a2a9b61952a1af9e194d
         <div class="presentation">
             <h2>Présentation du Projet</h2>
             <p>Ce projet vise à surveiller le niveau sonore ambiant en synchrone. Un capteur sonore est utilisé pour
                 capturer les données sonores, qui sont ensuite envoyées à une page web via une connexion Internet. Les
                 données sont affichées sous forme de graphique pour une visualisation facile et une analyse rapide.</p>
         </div>
-        <canvas id="graphiqueSonore" width="100" height="100"></canvas>
+        <canvas id="graphiqueSonore"></canvas>
         <div id="donneesCapteur" class="alert"></div> <!-- Div pour afficher les données renvoyées par Arduino -->
         <div class="led">
             <i class="fas fa-lightbulb led-verte led-allumee icone-led" id="ledVerte"></i> <!-- Icone d'ampoule verte -->
@@ -113,7 +104,6 @@
             var ctx = document.getElementById('graphiqueSonore').getContext('2d');
             graphique = new Chart(ctx, {
                 type: 'line',
-<<<<<<< HEAD
                 data: data,
             });
         }
@@ -121,118 +111,30 @@
         function mettreAJourGraphique(timestamp, valeur) {
             graphique.data.labels.push(timestamp);
             graphique.data.datasets[0].data.push({ x: timestamp, y: valeur });
-=======
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: 'Niveau Sonore (dB)',
-                        data: [],
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false, // Pour forcer le graphique à ne pas maintenir son aspect
-                    width: 100, // Largeur du graphique
-                    height: 100, // Hauteur du graphique
-                    scales: {
-                        xAxes: [{
-                            type: 'time',
-                            time: {
-                                displayFormats: {
-                                    second: 'DD/MM/YY HH:mm:ss'
-                                }
-                            },
-                            distribution: 'linear',
-                            ticks: {
-                                source: 'auto'
-                            }
-                        }],
-                        yAxes: [{
-                            scaleLabel: {
-                                display: true,
-                                labelString: 'Niveau Sonore (dB)'
-                            },
-                            ticks: {
-                                beginAtZero: true,
-                                min: 0,
-                                max: 10
-                            }
-                        }]
-                    },
-                    layout: {
-                        padding: {
-                            left: 10,
-                            right: 10,
-                            top: 10,
-                            bottom: 10
-                        }
-                    }
-                }
-            });
-        }
-
-        function mettreAJourGraphique() {
-            var date = new Date();
-            var heures = date.getHours();
-            var minutes = date.getMinutes();
-            var secondes = date.getSeconds();
-            var heuresFormatees = (heures < 10 ? '0' : '') + heures;
-            var minutesFormatees = (minutes < 10 ? '0' : '') + minutes;
-            var secondesFormatees = (secondes < 10 ? '0' : '') + secondes;
-            var formation = heuresFormatees + ":" + minutesFormatees + ":" + secondesFormatees;
-
-            var divElementScore = document.getElementById("ledscore");
-            var valeurTexte = divElementScore.textContent || divElementScore.innerText;
-            var valeurEntiere = parseInt(valeurTexte);
-
-            graphique.data.labels.push(formation);
-            graphique.data.datasets[0].data.push({ x: formation, y: valeurEntiere });
->>>>>>> 6dd6671c74b2ffc2a077a2a9b61952a1af9e194d
             graphique.update();
 
             // Afficher les données du capteur
-            document.getElementById('donneesCapteur').innerHTML = '<div class="alert alert-success" role="alert">Niveau sonore actuel : ' + valeurEntiere + ' dB</div>';
+            document.getElementById('donneesCapteur').innerHTML = '<div class="alert alert-success" role="alert">Niveau sonore actuel : ' + valeur + ' dB</div>';
 
+            // Mettre à jour l'état des LEDs en fonction du niveau sonore
             var ledVerte = document.getElementById('ledVerte');
             var ledRouge = document.getElementById('ledRouge');
 
-            if (valeurEntiere > 500) {
+            if (valeur > 500) {
                 ledVerte.classList.remove('led-allumee');
                 ledRouge.classList.add('led-allumee');
             } else {
                 ledRouge.classList.remove('led-allumee');
                 ledVerte.classList.add('led-allumee');
             }
-<<<<<<< HEAD
-=======
-            // Limiter le nombre de points de données
-            var seuil = 50; // Nombre maximal de points
-            while (graphique.data.labels.length > seuil) {
-                graphique.data.labels.shift(); // Supprimer le premier élément
-                graphique.data.datasets[0].data.shift(); // Supprimer le premier élément
-            }
-
-            graphique.update();
->>>>>>> 6dd6671c74b2ffc2a077a2a9b61952a1af9e194d
         }
         // Appeler la fonction pour récupérer les données au chargement de la page
         window.onload = function () {
             configurerGraphique();
-<<<<<<< HEAD
             mettreAJourGraphique(new Date(), [%NIVEAU_SONORE%]);
-=======
-            mettreAJourGraphique();
->>>>>>> 6dd6671c74b2ffc2a077a2a9b61952a1af9e194d
         };
     </script>
 </body>
 
-<<<<<<< HEAD
 </html>
 
-=======
-</html>
->>>>>>> 6dd6671c74b2ffc2a077a2a9b61952a1af9e194d

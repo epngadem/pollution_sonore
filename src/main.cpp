@@ -9,16 +9,18 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
-#include "../lib/CapteurSonore.h"
-#include "../lib/ServeurHTTP.h"
-#include "../lib/LedVerteActuator.h"
- #include "../lib/LedRougeActuator.h"
-#include "../lib/SpeakerActuator.h"
+#include "../lib/CapteurSonore.h"// Inclusion de la classe pour mon capteur sonore 
+#include "../lib/ServeurHTTP.h"// Inclusion de la classe serveur pour ma communication
+#include "../lib/LedVerteActuator.h" // Inclusion de la classe pour contrôler la LED verte
+#include "../lib/LedRougeActuator.h" // Inclusion de la classe pour contrôler la LED rouge
+#include "../lib/SpeakerActuator.h"// Inclusion de la classe pour mon haut parleur 
 #include "SPIFFS.h"
 
-const char *ssid = "Ariane";
-const char *password = "canada2023";
+// Définition des constantes pour le réseau WiFi
+const char *ssid = "UNIFI_IDO1";
+const char *password = "41Bidules!";
 
+// Broches pour les différents composants
 const int pinCapteurSonore = 32; // Broche du capteur sonore
 const int seuilSonore = 500;     // Seuil de déclenchement du niveau sonore
 
@@ -26,17 +28,20 @@ const int pinLedVerte = 27;    // Broche de la LED verte
 const int pinLedRouge = 26;    // Broche de la LED rouge
 const int pinHautParleur = 33; // Broche du haut-parleur
 
-CapteurSonore capteur(pinCapteurSonore);
+// Instanciation des objets pour les différents composants
+CapteurSonore capteur(pinCapteurSonore); // Crée un objet CapteurSonore avec le numéro de broche
 ServeurHTTP serveur;
-SpeakerActuator hautParleur(pinHautParleur); // Objet pour le contrôle du haut-parleur
-LedVerteActuator ledVerte(pinLedVerte);           // Objet pour le contrôle de la LED verte
-LedRougeActuator ledRouge(pinLedRouge);           // Objet pour le contrôle de la LED rouge
+SpeakerActuator hautParleur(pinHautParleur); //on a Créer un objet SpeakerActuator pour le haut-parleur
+LedVerteActuator ledVerte(pinLedVerte);      // on a Créer un objet LedVerteActuator pour le contrôle de la LED verte
+LedRougeActuator ledRouge(pinLedRouge);      //on a Créer un objet LedRougeActuator pour le contrôle de la LED rouge
 
-String niveauSonoreString;
-int niveauSonore;
+// Variables pour le traitement des données
+String niveauSonoreString; // Variable pour stocker le niveau sonore sous forme de chaîne
+int niveauSonore;          // Variable pour stocker le niveau sonore sous forme d'entier
 
-AsyncWebServer server(80);
+AsyncWebServer server(80); // Crée un serveur web asynchrone sur le port 80
 
+// Fonction de traitement des variables de remplacement pour la page web
 String processor(const String &var) {
     if (var == "SCORE") {
         return niveauSonoreString;
@@ -48,6 +53,7 @@ String processor(const String &var) {
     return String();
 }
 
+// Initialisation du système de fichiers SPIFFS
 void initSPIFFS() {
     if (!SPIFFS.begin(true)) {
         Serial.println("Une erreur s'est produite lors du montage de SPIFFS");
@@ -57,31 +63,34 @@ void initSPIFFS() {
 }
 
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(9600); // Initialisation de la communication série à 9600 bauds
 
+    // Configuration des broches des différents composants
     pinMode(pinCapteurSonore, INPUT);
     pinMode(pinLedVerte, OUTPUT);
     pinMode(pinLedRouge, OUTPUT);
     pinMode(pinHautParleur, OUTPUT);
 
-    WiFi.begin(ssid, password);
+    WiFi.begin(ssid, password); // Démarrage de la connexion WiFi avec les identifiants fournis
 
-    while (WiFi.status() != WL_CONNECTED) {
+    while (WiFi.status() != WL_CONNECTED) { // Attente de connexion WiFi
         delay(1000);
         Serial.println("Connecting to WiFi...");
     }
 
-    initSPIFFS();
-    Serial.println(WiFi.localIP());
+    initSPIFFS(); // Initialisation du système de fichiers SPIFFS
+    Serial.println(WiFi.localIP()); // Affichage de l'adresse IP locale obtenue par WiFi
 
+    // Route pour servir le contenu de index.html lors de l'accès à "/"
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
         request->send(SPIFFS, "/index.html", "text/html", false, processor);
     });
 
-    server.serveStatic("/", SPIFFS, "/");
+    server.serveStatic("/", SPIFFS, "/"); // Sert les fichiers statiques depuis mon SPIFFS
 
+    // Route pour renvoyer les données du capteur sous forme de JSON
     server.on("/data.json", HTTP_GET, [](AsyncWebServerRequest *request) {
-        int noiseLevel = capteur.lireValeur();
+        int noiseLevel = capteur.lireValeur(); // Lit la valeur du capteur sonore
         String jsonResponse = "{";
         jsonResponse += "\"niveauSonore\":" + String(noiseLevel);
         jsonResponse += "}";
@@ -92,23 +101,26 @@ void setup() {
         request->send(response);
     });
 
-    server.begin();
+    server.begin(); // Démarre le serveur web
 }
 
 void loop() {
-    niveauSonore = capteur.lireValeur();
+    niveauSonore = capteur.lireValeur(); // Lit la valeur du capteur sonore
 
+    // Vérification du niveau sonore pour agir en conséquence
     if (niveauSonore > seuilSonore) {
-        ledRouge.allumer();
-        ledVerte.eteindre();
-        hautParleur.jouerSon(1000);
+        ledRouge.allumer();     // Allume la LED rouge
+        ledVerte.eteindre();    // Éteint la LED verte
+        hautParleur.jouerSon(1000); // Joue un son
     } else {
-        ledRouge.eteindre();
-        ledVerte.allumer();
-        hautParleur.arreterSon();
+        ledRouge.eteindre();    // Éteint la LED rouge
+        ledVerte.allumer();     // Allume la LED verte
+        hautParleur.arreterSon(); // Arrête le son
     }
 
-    niveauSonoreString = String(niveauSonore);
+    niveauSonoreString = String(niveauSonore); // Convertit le niveau sonore en chaîne de caractères
+
+    // Mise à jour des données toutes les 5 secondes
     delay(5000);
 }
 
